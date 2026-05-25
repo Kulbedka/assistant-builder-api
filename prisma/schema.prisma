@@ -1,0 +1,31 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Assistant {
+  id          Int       @id @default(autoincrement())
+  name        String
+  instruction String
+  Message     Message[]
+}
+
+model Message {
+  id          Int       @id @default(autoincrement())
+  role        String
+  text        String
+  createdAt   DateTime  @default(now())
+  assistantId Int
+  Assistant   Assistant @relation(fields: [assistantId], references: [id])
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}

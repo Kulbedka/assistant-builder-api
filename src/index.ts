@@ -1,6 +1,7 @@
 ﻿import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import { prisma } from "./lib/prisma";
 
 dotenv.config();
 
@@ -15,6 +16,24 @@ app.get("/health", (req, res) => {
     status: "ok",
     service: "assistant-builder-api",
   });
+});
+
+app.get("/api/assistants", async (req, res) => {
+  try {
+    const assistants = await prisma.assistant.findMany({
+      orderBy: {
+        id: "asc",
+      },
+    });
+
+    res.json(assistants);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Failed to load assistants",
+    });
+  }
 });
 
 app.listen(port, () => {
