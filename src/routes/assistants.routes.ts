@@ -43,7 +43,19 @@ assistantsRouter.get("/:id", async (req, res) => {
       });
     }
 
-    res.json(assistant);
+    const messages = await prisma.message.findMany({
+      where: {
+        assistantId,
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+
+    res.json({
+      ...assistant,
+      messages,
+    });
   } catch (error) {
     console.error(error);
 
