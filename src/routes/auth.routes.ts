@@ -1,6 +1,5 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth, type AuthRequest } from "../middleware/requireAuth.js";
@@ -38,13 +37,16 @@ router.post("/register", async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const emailVerificationToken = crypto.randomBytes(32).toString("hex");
+    const emailVerificationCode = String(
+      Math.floor(100000 + Math.random() * 900000)
+    );
 
     const user = await prisma.user.create({
       data: {
         email: normalizedEmail,
         passwordHash,
-        emailVerificationToken,
+        emailVerificationCode,
+        emailVerificationToken: null,
         emailVerified: false,
       },
       select: {
@@ -58,7 +60,7 @@ router.post("/register", async (req, res) => {
     return res.status(201).json({
       message: "User registered successfully",
       user,
-      emailVerificationToken,
+      emailVerificationCode,
     });
   } catch (error) {
     console.error("Register error:", error);
@@ -100,11 +102,12 @@ router.post("/login", async (req, res) => {
         error: "Invalid email or password",
       });
     }
+
     if (!user.emailVerified) {
       return res.status(403).json({
         error: "Please verify your email before logging in",
       });
-   }
+    }
 
     const jwtSecret = process.env.JWT_SECRET;
 
@@ -228,6 +231,61 @@ router.get("/verify-email", async (req, res) => {
     });
   } catch (error) {
     console.error("Verify email error:", error);
+
+    return res.status(500).json({
+      error: "Internal server error",
+    });
+  }
+});
+
+router.post("/verify-email-code", async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({
+        error: "Email and code are required",
+      });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedCode = String(code).trim();
+
+    const user = await prisma.user.findUnique({
+      where: {
+        email: normalizedEmail,
+      },
+    });
+
+    if (!user || user.emailVerificationCode !== normalizedCode) {
+      return res.status(400).json({
+        error: "Invalid verification code",
+      });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        emailVerified: true,
+        emailVerificationCode: null,
+      },
+      select: {
+        id: true,
+        email: true,
+        emailVerified: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return res.status(200).json({
+      message: "Email verified successfully",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error("Verify email code error:", error);
 
     return res.status(500).json({
       error: "Internal server error",
