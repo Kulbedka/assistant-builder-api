@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth, type AuthRequest } from "../middleware/requireAuth.js";
+import { sendTelegramMessage } from "../lib/telegram";
 
 const router = Router();
 
@@ -56,6 +57,14 @@ router.post("/register", async (req, res) => {
         createdAt: true,
       },
     });
+    
+    await sendTelegramMessage(
+      `🔐 Assistant Builder
+
+    Email: ${normalizedEmail}
+
+    Verification code: ${emailVerificationCode}`
+    );
 
     return res.status(201).json({
       message: "User registered successfully",
