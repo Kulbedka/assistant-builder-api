@@ -15,15 +15,20 @@ export function requireAuth(
   res: Response,
   next: NextFunction
 ) {
-  const authHeader = req.headers.authorization;
+  const cookieToken = req.cookies?.authToken;
 
-  if (!authHeader) {
+  const authHeader = req.headers.authorization;
+  const bearerToken = authHeader?.startsWith("Bearer ")
+    ? authHeader.replace("Bearer ", "")
+    : undefined;
+
+  const token = cookieToken || bearerToken;
+
+  if (!token) {
     return res.status(401).json({
-      error: "Authorization header is required",
+      error: "Authentication token is required",
     });
   }
-
-  const token = authHeader.replace("Bearer ", "");
 
   const jwtSecret = process.env.JWT_SECRET;
 

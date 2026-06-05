@@ -7,6 +7,15 @@ import { sendTelegramMessage } from "../lib/telegram";
 
 const router = Router();
 
+const isProduction = process.env.NODE_ENV === "production";
+
+const authCookieOptions = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? ("none" as const) : ("lax" as const),
+  path: "/",
+};
+
 router.post("/register", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -141,16 +150,20 @@ router.post("/login", async (req, res) => {
       }
     );
 
-    return res.status(200).json({
-      message: "Login successful",
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        emailVerified: user.emailVerified,
-        createdAt: user.createdAt,
-      },
-    });
+res.cookie("authToken", token, {
+  ...authCookieOptions,
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+});
+
+return res.status(200).json({
+  message: "Login successful",
+  user: {
+    id: user.id,
+    email: user.email,
+    emailVerified: user.emailVerified,
+    createdAt: user.createdAt,
+  },
+});
   } catch (error) {
     console.error("Login error:", error);
 
@@ -307,6 +320,8 @@ router.post("/verify-email-code", async (req, res) => {
 });
 
 router.post("/logout", (_req, res) => {
+  res.clearCookie("authToken", authCookieOptions);
+
   return res.status(200).json({
     message: "Logged out successfully",
   });
