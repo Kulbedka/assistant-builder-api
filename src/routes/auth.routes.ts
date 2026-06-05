@@ -66,11 +66,15 @@ router.post("/register", async (req, res) => {
     Verification code: ${emailVerificationCode}`
     );
 
-    return res.status(201).json({
-      message: "User registered successfully",
-      user,
-      emailVerificationCode,
-    });
+return res.status(201).json({
+  message: "User registered successfully. Verification code sent.",
+  user: {
+    id: user.id,
+    email: user.email,
+    emailVerified: user.emailVerified,
+    createdAt: user.createdAt,
+  },
+});
   } catch (error) {
     console.error("Register error:", error);
 
