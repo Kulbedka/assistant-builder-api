@@ -12,6 +12,19 @@ model Assistant {
   name        String
   instruction String
   Message     Message[]
+  chats       Chat[]
+}
+
+model Chat {
+  id          Int       @id @default(autoincrement())
+  title       String    @default("New chat")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  assistantId Int
+  assistant   Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+
+  messages    Message[]
 }
 
 model Message {
@@ -19,8 +32,12 @@ model Message {
   role        String
   text        String
   createdAt   DateTime  @default(now())
+
   assistantId Int
   Assistant   Assistant @relation(fields: [assistantId], references: [id])
+  
+  chatId      Int?
+  chat        Chat? @relation(fields: [chatId], references: [id], onDelete: Cascade)
 }
 
 model User {

@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import { assistantsRouter } from "./routes/assistants.routes";
 import { messagesRouter } from "./routes/messages.routes";
 import authRouter from "./routes/auth.routes.js";
+import chatsRouter from "./routes/chats.routes";
 
 
 dotenv.config();
@@ -42,6 +43,7 @@ app.get("/health", (_req, res) => {
 app.use("/api/assistants", assistantsRouter);
 app.use("/api/messages", messagesRouter);
 app.use("/api/auth", authRouter);
+app.use("/api/chats", chatsRouter);
 
 app.listen(port, () => {
   console.log(`API server is running on http://localhost:${port}`);
