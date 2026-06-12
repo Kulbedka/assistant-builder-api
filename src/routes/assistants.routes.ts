@@ -1,11 +1,25 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
+import { requireAuth, type AuthRequest } from "../middleware/requireAuth";
 
 export const assistantsRouter = Router();
 
-assistantsRouter.get("/", async (_req, res) => {
+assistantsRouter.use(requireAuth);
+
+assistantsRouter.get("/", async (req, res) => {
   try {
+    const userId = (req as AuthRequest).user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        error: "Unauthorized",
+      });
+    }
+
     const assistants = await prisma.assistant.findMany({
+      where: {
+        ownerId: userId,
+      },
       orderBy: {
         id: "asc",
       },
@@ -31,9 +45,18 @@ assistantsRouter.get("/:id", async (req, res) => {
       });
     }
 
-    const assistant = await prisma.assistant.findUnique({
+    const userId = (req as AuthRequest).user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        error: "Unauthorized",
+      });
+    }
+
+    const assistant = await prisma.assistant.findFirst({
       where: {
         id: assistantId,
+        ownerId: userId,
       },
     });
 
@@ -69,6 +92,14 @@ assistantsRouter.post("/", async (req, res) => {
   try {
     const { name, instruction } = req.body;
 
+    const userId = (req as AuthRequest).user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        error: "Unauthorized",
+      });
+    }
+
     if (!name || !instruction) {
       return res.status(400).json({
         error: "name and instruction are required",
@@ -79,6 +110,7 @@ assistantsRouter.post("/", async (req, res) => {
       data: {
         name,
         instruction,
+        ownerId: userId,
       },
     });
 
