@@ -56,6 +56,59 @@ router.post("/", async (req, res) => {
   }
 });
 
+router.post("/:id/duplicate", async (req, res) => {
+  try {
+    const chatId = Number(req.params.id);
+
+    if (!chatId) {
+      return res.status(400).json({ error: "Invalid chat id" });
+    }
+
+    const existingChat = await prisma.chat.findUnique({
+      where: {
+        id: chatId,
+      },
+      include: {
+        messages: {
+          orderBy: {
+            createdAt: "asc",
+          },
+        },
+      },
+    });
+
+    if (!existingChat) {
+      return res.status(404).json({ error: "Chat not found" });
+    }
+
+    const duplicatedChat = await prisma.chat.create({
+      data: {
+        assistantId: existingChat.assistantId,
+        title: `${existingChat.title} copy`,
+        messages: {
+          create: existingChat.messages.map((message) => ({
+            role: message.role,
+            text: message.text,
+            assistantId: message.assistantId,
+          })),
+        },
+      },
+      include: {
+        messages: {
+          orderBy: {
+            createdAt: "asc",
+          },
+        },
+      },
+    });
+
+    return res.status(201).json(duplicatedChat);
+  } catch (error) {
+    console.error("Duplicate chat error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.patch("/:id", async (req, res) => {
   try {
     const chatId = Number(req.params.id);
