@@ -56,6 +56,45 @@ router.post("/", async (req, res) => {
   }
 });
 
+router.patch("/:id", async (req, res) => {
+  try {
+    const chatId = Number(req.params.id);
+    const { title } = req.body;
+
+    if (!chatId) {
+      return res.status(400).json({ error: "Invalid chat id" });
+    }
+
+    if (!title || typeof title !== "string") {
+      return res.status(400).json({ error: "Title is required" });
+    }
+
+    const existingChat = await prisma.chat.findUnique({
+      where: {
+        id: chatId,
+      },
+    });
+
+    if (!existingChat) {
+      return res.status(404).json({ error: "Chat not found" });
+    }
+
+    const updatedChat = await prisma.chat.update({
+      where: {
+        id: chatId,
+      },
+      data: {
+        title,
+      },
+    });
+
+    return res.json(updatedChat);
+  } catch (error) {
+    console.error("Update chat error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.delete("/:id", async (req, res) => {
   try {
     const chatId = Number(req.params.id);
