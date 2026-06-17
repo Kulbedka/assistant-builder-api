@@ -1,19 +1,33 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
+import { requireAuth } from "../middleware/requireAuth";
 
 const router = Router();
 
-router.get("/", async (req, res) => {
+router.get("/", requireAuth, async (req, res) => {
   try {
     const assistantId = Number(req.query.assistantId);
+    const userId = (req as any).user.userId;
 
-    if (!assistantId) {
+    if (!Number.isInteger(assistantId) || assistantId <= 0) {
       return res.status(400).json({ error: "assistantId is required" });
+    }
+
+    const assistant = await prisma.assistant.findFirst({
+      where: {
+        id: assistantId,
+        ownerId: userId,
+      },
+    });
+
+    if (!assistant) {
+      return res.status(404).json({ error: "Assistant not found" });
     }
 
     const chats = await prisma.chat.findMany({
       where: {
         assistantId,
+        ownerId: userId,
       },
       orderBy: {
         updatedAt: "desc",
@@ -34,17 +48,31 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requireAuth, async (req, res) => {
   try {
     const { assistantId, title } = req.body;
+    const userId = (req as any).user.userId;
+    const parsedAssistantId = Number(assistantId);
 
-    if (!assistantId) {
+    if (!Number.isInteger(parsedAssistantId) || parsedAssistantId <= 0) {
       return res.status(400).json({ error: "assistantId is required" });
+    }
+
+    const assistant = await prisma.assistant.findFirst({
+      where: {
+        id: parsedAssistantId,
+        ownerId: userId,
+      },
+    });
+
+    if (!assistant) {
+      return res.status(404).json({ error: "Assistant not found" });
     }
 
     const chat = await prisma.chat.create({
       data: {
-        assistantId: Number(assistantId),
+        assistantId: parsedAssistantId,
+        ownerId: userId,
         title: title || "New chat",
       },
     });
@@ -56,17 +84,19 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.post("/:id/duplicate", async (req, res) => {
+router.post("/:id/duplicate", requireAuth, async (req, res) => {
   try {
     const chatId = Number(req.params.id);
+    const userId = (req as any).user.userId;
 
-    if (!chatId) {
+    if (!Number.isInteger(chatId) || chatId <= 0) {
       return res.status(400).json({ error: "Invalid chat id" });
     }
 
-    const existingChat = await prisma.chat.findUnique({
+    const existingChat = await prisma.chat.findFirst({
       where: {
         id: chatId,
+        ownerId: userId,
       },
       include: {
         messages: {
@@ -84,6 +114,7 @@ router.post("/:id/duplicate", async (req, res) => {
     const duplicatedChat = await prisma.chat.create({
       data: {
         assistantId: existingChat.assistantId,
+        ownerId: userId,
         title: `${existingChat.title} copy`,
         messages: {
           create: existingChat.messages.map((message) => ({
@@ -109,12 +140,13 @@ router.post("/:id/duplicate", async (req, res) => {
   }
 });
 
-router.patch("/:id", async (req, res) => {
+router.patch("/:id", requireAuth, async (req, res) => {
   try {
     const chatId = Number(req.params.id);
     const { title } = req.body;
+    const userId = (req as any).user.userId;
 
-    if (!chatId) {
+    if (!Number.isInteger(chatId) || chatId <= 0) {
       return res.status(400).json({ error: "Invalid chat id" });
     }
 
@@ -122,9 +154,10 @@ router.patch("/:id", async (req, res) => {
       return res.status(400).json({ error: "Title is required" });
     }
 
-    const existingChat = await prisma.chat.findUnique({
+    const existingChat = await prisma.chat.findFirst({
       where: {
         id: chatId,
+        ownerId: userId,
       },
     });
 
@@ -148,17 +181,19 @@ router.patch("/:id", async (req, res) => {
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAuth, async (req, res) => {
   try {
     const chatId = Number(req.params.id);
+    const userId = (req as any).user.userId;
 
-    if (!chatId) {
+    if (!Number.isInteger(chatId) || chatId <= 0) {
       return res.status(400).json({ error: "Invalid chat id" });
     }
 
-    const existingChat = await prisma.chat.findUnique({
+    const existingChat = await prisma.chat.findFirst({
       where: {
         id: chatId,
+        ownerId: userId,
       },
     });
 
