@@ -123,3 +123,46 @@ assistantsRouter.post("/", async (req, res) => {
     });
   }
 });
+
+assistantsRouter.delete("/:id", async (req, res) => {
+  try {
+    const assistantId = Number(req.params.id);
+
+    if (Number.isNaN(assistantId)) {
+      return res.status(400).json({
+        error: "Invalid assistant id",
+      });
+    }
+
+    const userId = (req as any).user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        error: "Unauthorized",
+      });
+    }
+
+    const result = await prisma.assistant.deleteMany({
+      where: {
+        id: assistantId,
+        ownerId: userId,
+      },
+    });
+
+    if (result.count === 0) {
+      return res.status(404).json({
+        error: "Assistant not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      error: "Failed to delete assistant",
+    });
+  }
+});
