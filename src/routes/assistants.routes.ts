@@ -134,7 +134,7 @@ assistantsRouter.delete("/:id", async (req, res) => {
       });
     }
 
-    const userId = (req as any).user?.userId;
+    const userId = (req as AuthRequest).user?.userId;
 
     if (!userId) {
       return res.status(401).json({
@@ -142,18 +142,38 @@ assistantsRouter.delete("/:id", async (req, res) => {
       });
     }
 
-    const result = await prisma.assistant.deleteMany({
+    const assistant = await prisma.assistant.findFirst({
       where: {
         id: assistantId,
         ownerId: userId,
       },
     });
 
-    if (result.count === 0) {
+    if (!assistant) {
       return res.status(404).json({
         error: "Assistant not found",
       });
     }
+
+    await prisma.$transaction([
+      prisma.message.deleteMany({
+        where: {
+          assistantId,
+        },
+      }),
+      prisma.chat.deleteMany({
+        where: {
+          assistantId,
+          ownerId: userId,
+        },
+      }),
+      prisma.assistant.deleteMany({
+        where: {
+          id: assistantId,
+          ownerId: userId,
+        },
+      }),
+    ]);
 
     return res.json({
       success: true,
